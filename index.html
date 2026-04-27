@@ -6,6 +6,7 @@
   <meta name="description" content="Pehchaan — AI-powered Placement Intelligence Engine for Tier 2/3 college students in India">
   <title>Pehchaan — AI Placement Score</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -26,14 +27,58 @@
   <div id="formScreen" class="screen form-screen">
     <button class="back-btn" onclick="goBack('landingScreen')">← Back</button>
     <h2>Tell us about yourself</h2>
-    <p class="form-subtitle">We'll analyze your profile and generate a placement readiness score.</p>
+    <p class="form-subtitle">Upload your resume or fill in manually — we'll analyze and generate your score.</p>
+
+    <!-- Resume Upload -->
+    <div class="form-group">
+      <label>Upload Resume</label>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="resumeFile" accept=".pdf" onchange="handleFileSelect(event)">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title" id="uploadTitle">Drop your resume here or tap to browse</div>
+        <div class="upload-hint" id="uploadHint">PDF only · Parsed in-browser · No data stored</div>
+        <div class="upload-filename" id="uploadFilename" style="display:none"></div>
+        <div class="upload-error" id="uploadError" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Parse Loader -->
+    <div class="parse-loader" id="parseLoader">
+      <div class="parse-spinner"></div>
+      <div class="parse-loader-text" id="parseLoaderText">Reading your resume…</div>
+    </div>
+
+    <!-- Resume Analysis Card -->
+    <div class="resume-analysis" id="resumeAnalysis">
+      <h4>📊 Resume Analysis</h4>
+      <div class="analysis-row">
+        <span class="analysis-label">Projects detected</span>
+        <span class="analysis-value" id="anaProjects">—</span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-label">Measurable impact</span>
+        <span class="analysis-value" id="anaImpact">—</span>
+      </div>
+      <div class="analysis-row">
+        <span class="analysis-label">Sections found</span>
+        <span class="analysis-value" id="anaSections">—</span>
+      </div>
+      <div>
+        <div class="analysis-row" style="border-bottom:none">
+          <span class="analysis-label">Skills identified</span>
+        </div>
+        <div class="skills-tags" id="anaSkills"></div>
+      </div>
+    </div>
+
+    <div class="form-divider"><span>Review &amp; edit details</span></div>
 
     <div class="form-group">
       <label for="userName">Your Name</label>
       <input type="text" id="userName" placeholder="e.g. Rahul Sharma">
     </div>
     <div class="form-group">
-      <label for="userRole">Target Role</label>
+      <label for="userRole">Target Role <span class="autofill-badge" id="roleBadge" style="display:none">✦ suggested</span></label>
       <select id="userRole">
         <option value="" disabled selected>Select your target industry</option>
         <option value="IT">IT / Software</option>
@@ -43,7 +88,7 @@
       </select>
     </div>
     <div class="form-group">
-      <label for="userProject">Project Description</label>
+      <label for="userProject">Project Description <span class="autofill-badge" id="projBadge" style="display:none">✦ auto-filled</span></label>
       <textarea id="userProject" placeholder="Describe your best project — what you built, tools used, and impact…"></textarea>
       <p class="hint">Tip: Include numbers, tools, and action words like "built" or "improved"</p>
     </div>
@@ -70,7 +115,6 @@
   <!-- SCREEN 4: SCORE -->
   <div id="scoreScreen" class="screen score-screen">
     <h2 id="scoreGreeting">Your Score</h2>
-
     <div class="score-circle-wrap">
       <div class="score-circle">
         <svg viewBox="0 0 160 160">
@@ -80,16 +124,11 @@
         <div class="score-value" id="scoreValue">0<span>/100</span></div>
       </div>
     </div>
-
     <p class="credibility-line">
       Score calculated using CV strength, interview readiness, and behavioral signals.<br>
       Based on students from similar Tier 2/3 colleges.
     </p>
-
-    <!-- Emotional Message -->
     <div id="emotionalMsg" class="emotional-msg msg-mid"></div>
-
-    <!-- Strength & Gap -->
     <div class="insight-pills">
       <div class="insight-pill pill-strength">
         <div class="pill-label">🏆 Top Strength</div>
@@ -100,8 +139,6 @@
         <div class="pill-value" id="gapVal">—</div>
       </div>
     </div>
-
-    <!-- Score Breakdown -->
     <div class="score-card">
       <h3>Score Breakdown</h3>
       <div class="score-item">
@@ -126,18 +163,13 @@
         <div class="progress-bar"><div class="progress-bar-fill" id="commBar"></div></div>
       </div>
     </div>
-
-    <!-- AI Feedback -->
     <div class="feedback-card">
       <h3>AI Recommendations</h3>
       <div id="feedbackList"></div>
     </div>
-
-    <!-- Improvement Hook -->
     <div class="improvement-hook">
       📈 You can improve your score to <strong>75+</strong> in <strong>14 days</strong> with the right guidance.
     </div>
-
     <button id="btn-unlock" class="btn-primary" onclick="goToPaywall()">Unlock Detailed Plan</button>
     <button class="btn-secondary" onclick="goBack('formScreen')">← Re-analyze</button>
   </div>
@@ -148,7 +180,6 @@
     <h2>Unlock Your Personalized<br>Placement Plan</h2>
     <p class="paywall-sub">A step-by-step roadmap built from your score analysis</p>
     <div class="price">₹249 <span>one-time</span></div>
-
     <ul class="features-list">
       <li><span class="check">✓</span> <span id="paywallRole">Role-specific preparation roadmap</span></li>
       <li><span class="check">✓</span> Detailed score breakdown with fix-it guide</li>
@@ -156,7 +187,6 @@
       <li><span class="check">✓</span> CV improvement checklist with examples</li>
       <li><span class="check">✓</span> 14-day improvement action plan</li>
     </ul>
-
     <button id="btn-pay" class="btn-primary" onclick="unlockPlan()">Unlock for ₹249</button>
     <p class="guarantee">🔒 Secure payment · Instant access</p>
     <button class="skip" onclick="goBack('scoreScreen')">Maybe later</button>
